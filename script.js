@@ -1,4 +1,40 @@
-//Create Canvas
+// Updated script.js for Kenyan version of Aviator Game with M-Pesa Integration, Admin Panel, and Login System
+
+// User and Admin Data
+let users = {}; // Store users' phone numbers and balances
+let isAdmin = false; // Flag to check admin login
+
+// Prompt Login
+function login() {
+    const loginType = prompt("Enter '1' for User Login or '2' for Admin Login:");
+
+    if (loginType === '1') {
+        const phoneNumber = prompt("Enter your M-Pesa number:");
+        if (!users[phoneNumber]) {
+            users[phoneNumber] = { balance: 3000 }; // Initialize new user with balance
+            alert("New account created! Welcome.");
+        } else {
+            alert("Welcome back!");
+        }
+        userPhoneNumber = phoneNumber;
+    } else if (loginType === '2') {
+        const adminPassword = prompt("Enter Admin Password:");
+        if (adminPassword === 'admin123') { // Replace with a secure password mechanism
+            isAdmin = true;
+            alert("Admin access granted.");
+        } else {
+            alert("Incorrect password! Access denied.");
+            login();
+        }
+    } else {
+        alert("Invalid option. Try again.");
+        login();
+    }
+}
+
+login();
+
+// Create Canvas
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
@@ -11,9 +47,6 @@ canvas.width = 800;
 canvas.height = 250;
 
 // Set the starting position of the dot
-// let x = canvas.width / 2;
-// let y = canvas.height / 2;
-
 let x = 0;
 let y = canvas.height;
 
@@ -29,64 +62,49 @@ let cashedOut = false; // flag to indicate if the user has cashed out
 let placedBet = false;
 let isFlying = true;
 
-
-// Load the image
-const image = new Image();
-image.src = './img/aviator_jogo.png';
-image.style.minWidth = '100%';
-image.style.width = '100%';
-
+// Admin Panel Data
+let totalGains = 0;
+let totalAccountBalance = Object.values(users).reduce((sum, user) => sum + user.balance, 0);
 
 let balanceAmount = document.getElementById('balance-amount');
-let calculatedBalanceAmount = 3000;
-balanceAmount.textContent = calculatedBalanceAmount.toString() + '€';
+let calculatedBalanceAmount = users[userPhoneNumber]?.balance || 3000; // Starting balance in KES
+balanceAmount.textContent = calculatedBalanceAmount.toString() + ' KES';
 let betButton = document.getElementById('bet-button');
 betButton.textContent = 'Bet';
 
-//Previous Counters
+// Previous Counters
 let lastCounters = document.getElementById('last-counters');
 let counterItem = lastCounters.getElementsByTagName('p');
 let classNameForCounter = '';
 
-
 function updateCounterDepo() {
-
     lastCounters.innerHTML = counterDepo.map(function (i) {
-
             if ((i < 2.00)) {
                 classNameForCounter = 'blueBorder';
-
             } else if ((i >= 2) && (i < 10)) {
-
                 classNameForCounter = 'purpleBorder';
             } else classNameForCounter = 'burgundyBorder';
 
-            return '<p' + ' class=' + classNameForCounter + '>' + i + '</p>'
+            return '<p' + ' class=' + classNameForCounter + '>' + i + '</p>';
         }
-        // `<p style=`{classVar}`>${i}</p>`
-
     ).join('');
 }
 
-//Hide letter E from input
+// Hide letter E from input
 let inputBox = document.getElementById("bet-input");
-
-let invalidChars = ["-", "+", "e",];
-
+let invalidChars = ["-", "+", "e"];
 inputBox.addEventListener("keydown", function (e) {
     if (invalidChars.includes(e.key)) {
         e.preventDefault();
     }
 });
 
-
 let messageField = document.getElementById('message');
 messageField.textContent = 'Wait for the next round';
 
-
-//Animation
+// Animation
 function draw() {
-    //Counter
+    // Counter
     counter += 0.001;
     document.getElementById('counter').textContent = counter.toFixed(2) + 'x';
 
@@ -156,7 +174,6 @@ function draw() {
     // Translate the canvas based on the dot's position
     ctx.translate(canvasOffsetX, canvasOffsetY);
 
-
     // Draw the dot's path
     for (let i = 1; i < dotPath.length; i++) {
         ctx.beginPath();
@@ -187,7 +204,6 @@ function draw() {
 draw();
 
 betButton.addEventListener('click', () => {
-
     if (placedBet) {
         cashOut();
     } else {
@@ -196,24 +212,22 @@ betButton.addEventListener('click', () => {
     if (!placedBet && !isFlying) {
         messageField.textContent = 'Place your bet';
     }
-
 });
-
 
 // Function to place a bet
 function placeBet() {
-
     if (placedBet || inputBox.value === 0 || isNaN(inputBox.value) || isFlying || inputBox.value > calculatedBalanceAmount) {
-        // user has already placed bet or has not placed a bet
         messageField.textContent = 'Wait for the next round';
         return;
     }
 
     if ((counter >= randomStop) && !isFlying && (inputBox.value <= calculatedBalanceAmount)) {
-        // Only allow betting if animation is not running
         if (inputBox.value && (inputBox.value <= calculatedBalanceAmount)) {
             calculatedBalanceAmount -= inputBox.value;
-            balanceAmount.textContent = calculatedBalanceAmount.toFixed(2).toString() + '€';
+            users[userPhoneNumber].balance = calculatedBalanceAmount;
+            totalAccountBalance -= inputBox.value;
+            totalGains += inputBox.value;
+            balanceAmount.textContent = calculatedBalanceAmount.toFixed(2).toString() + ' KES';
             betButton.textContent = 'Cash Out';
             placedBet = true;
             messageField.textContent = 'Placed Bet';
@@ -224,15 +238,12 @@ function placeBet() {
         if (isFlying) {
             messageField.textContent = 'Wait for the next round';
         }
-
     }
 }
 
 // Function to cash out bet
 function cashOut() {
-
     if (cashedOut || (inputBox.value === 0)) {
-        // user has already cashed out or has not placed a bet
         messageField.textContent = 'Wait for the next round';
         return;
     }
@@ -240,15 +251,40 @@ function cashOut() {
     if ((counter < randomStop)) {
         const winnings = inputBox.value * counter; // Calculate winnings based on counter
         calculatedBalanceAmount += winnings; // Add winnings to balance
-        balanceAmount.textContent = calculatedBalanceAmount.toFixed(2).toString() + '€';
+        users[userPhoneNumber].balance = calculatedBalanceAmount;
+        totalAccountBalance += winnings; // Update total account balance
+        balanceAmount.textContent = calculatedBalanceAmount.toFixed(2).toString() + ' KES';
 
         cashedOut = true; // set flag to indicate user has cashed out
         placedBet = false;
         betButton.textContent = 'Bet';
-        messageField.textContent = `Bet cashed out: ${winnings.toFixed(2)}`;
+        messageField.textContent = `Bet cashed out: ${winnings.toFixed(2)} KES`;
     } else {
         messageField.textContent = "Can't cash out now";
     }
 }
 
+// Function to withdraw balance
+function withdrawFunds() {
+    if (calculatedBalanceAmount >= 100) {
+        alert(`Withdrawing ${calculatedBalanceAmount} KES to M-Pesa number ${userPhoneNumber}`);
+        users[userPhoneNumber].balance = 0;
+        totalAccountBalance -= calculatedBalanceAmount;
+        calculatedBalanceAmount = 0;
+        balanceAmount.textContent = calculatedBalanceAmount.toFixed(2) + ' KES';
+    } else {
+        alert("You need at least 100 KES to withdraw.");
+    }
+}
 
+// Admin panel logging (example usage for real-time monitoring)
+function logAdminData() {
+    if (isAdmin) {
+        console.clear();
+        console.log(`Total Gains: ${totalGains} KES`);
+        console.log(`Total Account Balance: ${totalAccountBalance} KES`);
+        console.table(users);
+    }
+}
+
+setInterval(logAdminData, 10000); // Log data every 10 seconds
